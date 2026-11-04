@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Airborne Radar</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --cyan: #00e5ff;
+            --red: #ff3333;
+            --bg-glass: rgba(10, 10, 15, 0.65);
+            --border-glass: rgba(0, 229, 255, 0.2);
+        }
+
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background: #000; font-family: 'Rajdhani', sans-serif; 
+            overflow: hidden; color: #fff; user-select: none;
+        }
+
+        #map { width: 100%; height: 100%; position: absolute; z-index: 1; background: #050505; }
+        
+        .leaflet-tile { filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(110%); }
+        
+        .vignette {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;
+            pointer-events: none; box-shadow: inset 0 0 150px rgba(0,0,0,0.9);
+        }
+
+        .hud-container { position: absolute; top: 30px; right: 40px; z-index: 10; text-align: right; }
+        #clock {
+            font-size: 56px; font-weight: 600; color: #fff;
+            text-shadow: 0 0 15px rgba(0, 229, 255, 0.6); letter-spacing: 2px; line-height: 1;
+        }
+        #radarStatus { font-size: 16px; font-weight: 600; color: #ff3333; letter-spacing: 2px; margin-top: 5px; text-transform: uppercase; }
+
+        .glass-panel {
+            position: absolute; bottom: 40px; left: 40px; z-index: 10;
+            background: var(--bg-glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-glass); border-radius: 20px;
+            padding: 25px; width: 420px; box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+            display: flex; flex-direction: column; gap: 15px;
+            opacity: 0; transform: translateY(30px); transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .glass-panel.active { opacity: 1; transform: translateY(0); }
+
+        .header-row { display: flex; justify-content: space-between; align-items: flex-start; }
+        .ac-type { font-size: 28px; font-weight: 700; color: var(--cyan); line-height: 1.1; }
+        .ac-operator { font-size: 16px; color: #aaa; text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }
+        .mil-badge { 
+            background: var(--red); color: #fff; font-size: 14px; font-weight: 700;
+            padding: 4px 10px; border-radius: 8px; letter-spacing: 1px; display: none;
+            box-shadow: 0 0 10px rgba(255, 51, 51, 0.5);
+        }
+
+        .image-container {
+            width: 100%; height: 220px; border-radius: 12px; overflow: hidden;
+            background: #111; position: relative; border: 1px solid rgba(255,255,255,0.05);
+        }
+        .image-container img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s; }
+        .image-overlay {
+            position: absolute; bottom: 0; left: 0; width: 100%; padding: 25px 15px 10px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.9));
+            font-size: 14px; font-weight: 500; color: #ccc; letter-spacing: 1px; box-sizing: border-box; text-transform: uppercase;
+        }
+
+        .route-block {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(0, 229, 255, 0.05); padding: 15px 20px; border-radius: 12px;
+            border: 1px solid var(--border-glass);
+        }
+        .airport-code { font-size: 32px; font-weight: 700; color: #fff; letter-spacing: 2px; line-height: 1; margin: 4px 0; }
+        .airport-country { font-size: 12px; color: #999; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+        .route-arrow { color: var(--cyan); font-size: 24px; animation: pulse 2s infinite; }
+
+        .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .detail-box {
+            background: rgba(255,255,255,0.03); padding: 12px 15px;
+            border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);
+        }
+        .detail-label { font-size: 12px; color: #777; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 2px; }
+        .detail-value { font-size: 22px; font-weight: 600; color: #ddd; }
+        .highlight { color: var(--cyan); }
+
+        .plane-icon { background: transparent; border: none; }
+        .selection-ring {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 60px; height: 60px;
+            margin-top: -30px; margin-left: -30px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 15px #fff;
+            animation: radar-ping 1.5s infinite ease-out;
+            pointer-events: none;
+        }
+
+        #loading {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 100; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; color: var(--cyan); transition: opacity 0.5s;
+        }
+        .spinner {
+            border: 3px solid rgba(0, 229, 255, 0.1); border-top: 3px solid var(--cyan);
+            border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin-bottom: 20px;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes radar-ping { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+        .leaflet-control-attribution { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div class="spinner"></div>
+        <h2 id="loadingText" style="letter-spacing: 3px; font-weight: 600; text-align: center;">AWAITING GPS PERMISSION...</h2>
+    </div>
+
+    <div id="map"></div>
+    <div class="vignette"></div>
+    
+    <div class="hud-container">
+        <div id="clock">00:00:00</div>
+        <div id="radarStatus">INITIATING DATA LINK...</div>
+    </div>
+    
+    <div class="glass-panel" id="infoPanel">
+        <div class="header-row">
+            <div>
+                <div class="ac-type" id="acTypeHeader">SCANNING...</div>
+                <div class="ac-operator" id="acOperatorHeader">OPERATOR</div>
+            </div>
+            <div class="mil-badge" id="acMil">MILITARY</div>
+        </div>
+        
+        <div class="image-container">
+            <img id="acImage" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect width='100%' height='100%' fill='%23111'/><text x='50%' y='50%' fill='%23444' text-anchor='middle' alignment-baseline='middle' font-family='sans-serif' font-size='16'>ACQUIRING VISUAL</text></svg>">
+            <div class="image-overlay" id="acImageSource">LIVE FEED</div>
+        </div>
+
+        <div class="route-block">
+            <div>
+                <div class="detail-label">DEPARTURE</div>
+                <div class="airport-code" id="acFromCode">...</div>
+                <div class="airport-country" id="acFromCountry">SEARCHING...</div>
+            </div>
+            <div class="route-arrow">✈</div>
+            <div style="text-align: right;">
+                <div class="detail-label">ARRIVAL</div>
+                <div class="airport-code" id="acToCode">...</div>
+                <div class="airport-country" id="acToCountry">SEARCHING...</div>
+            </div>
+        </div>
+
+        <div class="details-grid">
+            <div class="detail-box">
+                <div class="detail-label">Altitude (MSL)</div>
+                <div class="detail-value"><span class="highlight" id="acAlt">0</span> FT</div>
+            </div>
+            <div class="detail-box">
+                <div class="detail-label">Ground Speed</div>
+                <div class="detail-value"><span class="highlight" id="acSpeed">0</span> KTS</div>
+            </div>
+            <div class="detail-box">
+                <div class="detail-label">Distance</div>
+                <div class="detail-value"><span class="highlight" id="acDist">0</span> KM</div>
+            </div>
+            <div class="detail-box">
+                <div class="detail-label">Squawk Code</div>
+                <div class="detail-value highlight" id="acSquawk">0000</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let userLat = 25.2048; 
+        let userLon = 55.2708;
+        
+        const RADIUS_NM = 22; 
+        const MAX_DISTANCE_KM = 40.0;
+        
+        const REFRESH_RATE = 5000; 
+        const CYCLE_RATE = 8000; // 8-second hands-free cycle
+        
+        let map;
+        let aircraftMarkers = {};
+        let selectedHex = null;
+        let currentCycleIndex = 0; 
+        
+        const routeCache = {}; // Cache to prevent spamming the routing API
+
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' });
+        }, 1000);
+
+        window.onload = () => {
+            const loadingText = document.getElementById('loadingText');
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        userLat = pos.coords.latitude;
+                        userLon = pos.coords.longitude;
+                        loadingText.innerText = "GPS LOCK ACQUIRED...";
+                        setTimeout(initializeRadar, 800);
+                    },
+                    (err) => {
+                        loadingText.innerText = "GPS DENIED. USING FALLBACK LOC...";
+                        setTimeout(initializeRadar, 1500);
+                    },
+                    { timeout: 8000 } 
+                );
+            } else {
+                initializeRadar();
+            }
+        };
+
+        function initializeRadar() {
+            document.getElementById('loading').style.opacity = '0';
+            setTimeout(() => document.getElementById('loading').style.display = 'none', 500);
+
+            map = L.map('map', {zoomControl: false, attributionControl: false, scrollWheelZoom: false, dragging: false}).setView([userLat, userLon], 10);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            
+            L.circleMarker([userLat, userLon], { radius: 6, color: '#00e5ff', fillColor: '#00e5ff', fillOpacity: 1, weight: 2 }).addTo(map);
+            L.circle([userLat, userLon], {radius: MAX_DISTANCE_KM * 1000, color: '#00e5ff', weight: 1, fillOpacity: 0.05, dashArray: "5, 10"}).addTo(map);
+
+            fetchAircraft();
+            setInterval(fetchAircraft, REFRESH_RATE);
+            
+            setInterval(() => {
+                const hexKeys = Object.keys(aircraftMarkers);
+                if(hexKeys.length > 0) {
+                    currentCycleIndex = (currentCycleIndex + 1) % hexKeys.length;
+                    const nextHex = hexKeys[currentCycleIndex];
+                    selectAircraft(aircraftMarkers[nextHex].data);
+                }
+            }, CYCLE_RATE);
+        }
+
+        async function fetchAircraft() {
+            const rawUrl = `https://api.adsb.lol/v2/lat/${userLat}/lon/${userLon}/dist/${RADIUS_NM}`;
+            
+            const urlsToTry = [
+                rawUrl, 
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(rawUrl)}`,
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(rawUrl)}`
+            ];
+
+            let success = false;
+            let targetCount = 0;
+
+            for (const url of urlsToTry) {
+                try {
+                    const res = await fetch(url);
+                    if (!res.ok) continue; 
+                    
+                    const data = await res.json();
+                    if (data.ac) {
+                        targetCount = updateMarkers(data.ac);
+                        document.getElementById('radarStatus').innerText = `AIRBORNE TARGETS: ${targetCount}`;
+                        document.getElementById('radarStatus').style.color = '#00e5ff';
+                        success = true;
+                        break; 
+                    }
+                } catch (e) { }
+            }
+
+            if (!success) {
+                document.getElementById('radarStatus').innerText = `NO SIGNAL`;
+                document.getElementById('radarStatus').style.color = '#ffaa00';
+            }
+        }
+
+        async function fetchFlightRoute(callsign) {
+            if (!callsign || callsign.trim() === '') return { from: 'N/A', fromCountry: 'CLASSIFIED', to: 'N/A', toCountry: 'CLASSIFIED' };
+            const id = callsign.trim();
+            if (routeCache[id]) return routeCache[id];
+
+            try {
+                const url = `https://api.flightradar24.com/common/v1/flight/list.json?query=${id}&fetchBy=flight&page=1&limit=1`;
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+                const res = await fetch(proxyUrl);
+                const data = await res.json();
+                
+                if (data.result && data.result.response && data.result.response.data && data.result.response.data.length > 0) {
+                    const flight = data.result.response.data[0];
+                    const origin = flight.airport.origin;
+                    const dest = flight.airport.destination;
+                    
+                    const route = {
+                        from: origin ? origin.code.iata : 'UNK',
+                        fromCountry: origin ? origin.position.country.name : 'Unknown',
+                        to: dest ? dest.code.iata : 'UNK',
+                        toCountry: dest ? dest.position.country.name : 'Unknown'
+                    };
+                    routeCache[id] = route;
+                    return route;
+                }
+            } catch(e) { }
+            
+            const fallback = { from: 'UNK', fromCountry: 'UNAVAILABLE', to: 'UNK', toCountry: 'UNAVAILABLE' };
+            routeCache[id] = fallback;
+            return fallback;
+        }
+
+        function renderIconHtml(ac) {
+            const isMil = ac.mil || (ac.dbFlags & 1) || (ac.desc && ac.desc.toLowerCase().includes('mil'));
+            const baseColor = isMil ? '#ff3333' : '#00e5ff';
+            const track = ac.track || ac.trk || 0;
+            const isSelected = selectedHex === ac.hex;
+            
+            const color = isSelected ? '#ffffff' : baseColor;
+            const size = isSelected ? 48 : 36;
+            const dropShadow = isSelected ? `drop-shadow(0px 0px 10px rgba(255,255,255,0.8))` : `drop-shadow(0px 0px 6px ${baseColor}80)`;
+            const ring = isSelected ? `<div class="selection-ring"></div>` : '';
+
+            return `<div style="position: relative; width: ${size}px; height: ${size}px; display: flex; justify-content: center; align-items: center;">
+                ${ring}
+                <div style="transform: rotate(${track}deg); transform-origin: center; filter: ${dropShadow}; display: flex; transition: all 0.3s;">
+                    <svg viewBox="0 0 24 24" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="${color}"/>
+                    </svg>
+                </div>
+            </div>`;
+        }
+
+        function updateAllIcons() {
+            Object.values(aircraftMarkers).forEach(marker => {
+                const ac = marker.data;
+                const size = selectedHex === ac.hex ? 48 : 36;
+                marker.setIcon(L.divIcon({
+                    html: renderIconHtml(ac), 
+                    className: 'plane-icon', 
+                    iconSize: [size, size], 
+                    iconAnchor: [size/2, size/2]
+                }));
+                marker.setZIndexOffset(selectedHex === ac.hex ? 1000 : 0);
+            });
+        }
+
+        function updateMarkers(aircrafts) {
+            const currentHexes = new Set();
+            let validCount = 0;
+            
+            aircrafts.forEach(ac => {
+                if(!ac.lat || !ac.lon) return;
+                
+                // IGNORE AIRCRAFT ON GROUND (Ground status or less than 100 ft)
+                if(ac.alt_baro === 'ground' || ac.alt_baro < 100) return;
+                
+                // 40km Distance Filter
+                const distKm = calculateDistance(userLat, userLon, ac.lat, ac.lon);
+                if (distKm > MAX_DISTANCE_KM) return;
+
+                currentHexes.add(ac.hex);
+                validCount++;
+
+                if(aircraftMarkers[ac.hex]) {
+                    aircraftMarkers[ac.hex].setLatLng([ac.lat, ac.lon]);
+                    aircraftMarkers[ac.hex].data = ac;
+                    
+                    // IF THIS IS THE ACTIVE PLANE, TRACK IT LIVE
+                    if(selectedHex === ac.hex) {
+                        updatePanelData(ac);
+                        map.panTo([ac.lat, ac.lon], {animate: true, duration: 1.5}); // Live smooth camera follow
+                    }
+                } else {
+                    const marker = L.marker([ac.lat, ac.lon]).addTo(map);
+                    marker.data = ac;
+                    aircraftMarkers[ac.hex] = marker;
+                }
+            });
+
+            // Remove out-of-bounds or landed aircraft
+            Object.keys(aircraftMarkers).forEach(hex => {
+                if(!currentHexes.has(hex)) {
+                    map.removeLayer(aircraftMarkers[hex]);
+                    delete aircraftMarkers[hex];
+                    if (selectedHex === hex) document.getElementById('infoPanel').classList.remove('active');
+                }
+            });
+
+            updateAllIcons();
+            return validCount;
+        }
+
+        async function selectAircraft(ac) {
+            selectedHex = ac.hex;
+            
+            updateAllIcons();
+            map.panTo([ac.lat, ac.lon], {animate: true, duration: 1.5});
+            
+            updatePanelData(ac);
+            document.getElementById('infoPanel').classList.add('active');
+
+            // Reset Routing UI State for lookup
+            document.getElementById('acFromCode').innerText = '...';
+            document.getElementById('acFromCountry').innerText = 'SEARCHING...';
+            document.getElementById('acToCode').innerText = '...';
+            document.getElementById('acToCountry').innerText = 'SEARCHING...';
+
+            fetchFlightRoute(ac.flight).then(route => {
+                // Ensure we haven't cycled to a new plane while fetching
+                if (selectedHex === ac.hex) {
+                    document.getElementById('acFromCode').innerText = route.from;
+                    document.getElementById('acFromCountry').innerText = route.fromCountry;
+                    document.getElementById('acToCode').innerText = route.to;
+                    document.getElementById('acToCountry').innerText = route.toCountry;
+                }
+            });
+
+            const imgEl = document.getElementById('acImage');
+            imgEl.style.opacity = '0.3';
+            
+            try {
+                const imgUrl = `https://api.planespotters.net/pub/photos/hex/${ac.hex}`;
+                let res = await fetch(imgUrl);
+                
+                if (!res.ok) {
+                    res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(imgUrl)}`);
+                }
+
+                const data = await res.json();
+                if(data.photos && data.photos.length > 0) {
+                    imgEl.src = data.photos[0].thumbnail_large.src;
+                } else {
+                    imgEl.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect width='100%' height='100%' fill='%23111'/><text x='50%' y='50%' fill='%23444' text-anchor='middle' alignment-baseline='middle' font-family='sans-serif' font-size='16'>NO VISUAL ON FILE</text></svg>";
+                }
+            } catch(e) {
+               imgEl.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect width='100%' height='100%' fill='%23111'/><text x='50%' y='50%' fill='%23444' text-anchor='middle' alignment-baseline='middle' font-family='sans-serif' font-size='16'>VISUAL UNAVAILABLE</text></svg>";
+            } finally {
+                imgEl.style.opacity = '1';
+            }
+        }
+
+        function updatePanelData(ac) {
+            const isMil = ac.mil || (ac.dbFlags & 1) || (ac.desc && ac.desc.toLowerCase().includes('mil'));
+            
+            document.getElementById('acTypeHeader').innerText = ac.desc || ac.t || 'UNCLASSIFIED TYPE';
+            document.getElementById('acOperatorHeader').innerText = ac.ownOp || 'UNKNOWN OPERATOR';
+            document.getElementById('acMil').style.display = isMil ? 'block' : 'none';
+
+            document.getElementById('acAlt').innerText = ac.alt_baro === 'ground' ? 'GND' : (ac.alt_baro || 0).toLocaleString();
+            document.getElementById('acSpeed').innerText = (ac.gs || 0).toLocaleString();
+            document.getElementById('acSquawk').innerText = ac.squawk || 'NONE';
+            
+            const dist = calculateDistance(userLat, userLon, ac.lat, ac.lon).toFixed(1);
+            document.getElementById('acDist').innerText = dist;
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; 
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+        }
+    </script>
+</body>
+</html>
