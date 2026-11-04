@@ -1,0 +1,486 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2775.1">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  </style>
+</head>
+<body>
+<p class="p1">&lt;!DOCTYPE html&gt;</p>
+<p class="p1">&lt;html lang="en"&gt;</p>
+<p class="p1">&lt;head&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta charset="UTF-8"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;title&gt;Live Airborne Radar&lt;/title&gt;</p>
+<p class="p2"><span class="Apple-converted-space">    </span></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&amp;display=swap" rel="stylesheet"&gt;</p>
+<p class="p2"><span class="Apple-converted-space">    </span></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;style&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>:root {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>--cyan: #00e5ff;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>--red: #ff3333;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>--bg-glass: rgba(10, 10, 15, 0.65);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>--border-glass: rgba(0, 229, 255, 0.2);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>body, html {<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>margin: 0; padding: 0; width: 100%; height: 100%;<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: #000; font-family: 'Rajdhani', sans-serif;<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>overflow: hidden; color: #fff; user-select: none;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>#map { width: 100%; height: 100%; position: absolute; z-index: 1; background: #050505; }</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.leaflet-tile { filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(110%); }</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.vignette {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>pointer-events: none; box-shadow: inset 0 0 150px rgba(0,0,0,0.9);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.hud-container { position: absolute; top: 30px; right: 40px; z-index: 10; text-align: right; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>#clock {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>font-size: 56px; font-weight: 600; color: #fff;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>text-shadow: 0 0 15px rgba(0, 229, 255, 0.6); letter-spacing: 2px; line-height: 1;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>#radarStatus { font-size: 16px; font-weight: 600; color: #ff3333; letter-spacing: 2px; margin-top: 5px; text-transform: uppercase; }</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.glass-panel {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>position: absolute; bottom: 40px; left: 40px; z-index: 10;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: var(--bg-glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border: 1px solid var(--border-glass); border-radius: 20px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>padding: 25px; width: 420px; box-shadow: 0 20px 50px rgba(0,0,0,0.7);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>display: flex; flex-direction: column; gap: 15px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>opacity: 0; transform: translateY(30px); transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.glass-panel.active { opacity: 1; transform: translateY(0); }</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.header-row { display: flex; justify-content: space-between; align-items: flex-start; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.ac-type { font-size: 28px; font-weight: 700; color: var(--cyan); line-height: 1.1; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.ac-operator { font-size: 16px; color: #aaa; text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.mil-badge {<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: var(--red); color: #fff; font-size: 14px; font-weight: 700;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>padding: 4px 10px; border-radius: 8px; letter-spacing: 1px; display: none;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>box-shadow: 0 0 10px rgba(255, 51, 51, 0.5);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.image-container {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>width: 100%; height: 220px; border-radius: 12px; overflow: hidden;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: #111; position: relative; border: 1px solid rgba(255,255,255,0.05);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.image-container img { width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.image-overlay {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>position: absolute; bottom: 0; left: 0; width: 100%; padding: 25px 15px 10px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: linear-gradient(transparent, rgba(0,0,0,0.9));</p>
+<p class="p1"><span class="Apple-converted-space">            </span>font-size: 14px; font-weight: 500; color: #ccc; letter-spacing: 1px; box-sizing: border-box; text-transform: uppercase;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.route-block {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>display: flex; justify-content: space-between; align-items: center;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: rgba(0, 229, 255, 0.05); padding: 15px 20px; border-radius: 12px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border: 1px solid var(--border-glass);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.airport-code { font-size: 32px; font-weight: 700; color: #fff; letter-spacing: 2px; line-height: 1; margin: 4px 0; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.airport-country { font-size: 12px; color: #999; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.route-arrow { color: var(--cyan); font-size: 24px; animation: pulse 2s infinite; }</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.detail-box {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: rgba(255,255,255,0.03); padding: 12px 15px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.detail-label { font-size: 12px; color: #777; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 2px; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.detail-value { font-size: 22px; font-weight: 600; color: #ddd; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.highlight { color: var(--cyan); }</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>.plane-icon { background: transparent; border: none; }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.selection-ring {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>position: absolute;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>top: 50%; left: 50%;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>width: 60px; height: 60px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>margin-top: -30px; margin-left: -30px;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border: 2px solid #fff;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border-radius: 50%;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>box-shadow: 0 0 15px #fff;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>animation: radar-ping 1.5s infinite ease-out;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>pointer-events: none;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>#loading {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>position: absolute; top: 0; left: 0; width: 100%; height: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>background: #000; z-index: 100; display: flex; flex-direction: column;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>justify-content: center; align-items: center; color: var(--cyan); transition: opacity 0.5s;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.spinner {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border: 3px solid rgba(0, 229, 255, 0.1); border-top: 3px solid var(--cyan);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin-bottom: 20px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>@keyframes radar-ping { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }</p>
+<p class="p1"><span class="Apple-converted-space">        </span>.leaflet-control-attribution { display: none !important; }</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/style&gt;</p>
+<p class="p1">&lt;/head&gt;</p>
+<p class="p1">&lt;body&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="loading"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="spinner"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;h2 id="loadingText" style="letter-spacing: 3px; font-weight: 600; text-align: center;"&gt;AWAITING GPS PERMISSION...&lt;/h2&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="map"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="vignette"&gt;&lt;/div&gt;</p>
+<p class="p2"><span class="Apple-converted-space">    </span></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="hud-container"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div id="clock"&gt;00:00:00&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div id="radarStatus"&gt;INITIATING DATA LINK...&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><span class="Apple-converted-space">    </span></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;div class="glass-panel" id="infoPanel"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="header-row"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="ac-type" id="acTypeHeader"&gt;SCANNING...&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="ac-operator" id="acOperatorHeader"&gt;OPERATOR&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="mil-badge" id="acMil"&gt;MILITARY&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="image-container"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;img id="acImage" src="data:image/svg+xml;utf8,&lt;svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'&gt;&lt;rect width='100%' height='100%' fill='%23111'/&gt;&lt;text x='50%' y='50%' fill='%23444' text-anchor='middle' alignment-baseline='middle' font-family='sans-serif' font-size='16'&gt;ACQUIRING VISUAL&lt;/text&gt;&lt;/svg&gt;"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="image-overlay" id="acImageSource"&gt;LIVE FEED&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="route-block"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="detail-label"&gt;DEPARTURE&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="airport-code" id="acFromCode"&gt;...&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="airport-country" id="acFromCountry"&gt;SEARCHING...&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="route-arrow"&gt;✈&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div style="text-align: right;"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="detail-label"&gt;ARRIVAL&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="airport-code" id="acToCode"&gt;...&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="airport-country" id="acToCountry"&gt;SEARCHING...&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="details-grid"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="detail-box"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="detail-label"&gt;Altitude (MSL)&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="detail-value"&gt;&lt;span class="highlight" id="acAlt"&gt;0&lt;/span&gt; FT&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="detail-box"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="detail-label"&gt;Ground Speed&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="detail-value"&gt;&lt;span class="highlight" id="acSpeed"&gt;0&lt;/span&gt; KTS&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="detail-box"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="detail-label"&gt;Distance&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="detail-value"&gt;&lt;span class="highlight" id="acDist"&gt;0&lt;/span&gt; KM&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="detail-box"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="detail-label"&gt;Squawk Code&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="detail-value highlight" id="acSquawk"&gt;0000&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"&gt;&lt;/script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;script&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let userLat = 25.2048;<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>let userLon = 55.2708;</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>const RADIUS_NM = 22;<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>const MAX_DISTANCE_KM = 40.0;</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>const REFRESH_RATE = 5000;<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>const CYCLE_RATE = 8000; // 8-second hands-free cycle</p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>let map;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let aircraftMarkers = {};</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let selectedHex = null;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>let currentCycleIndex = 0;<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">        </span></p>
+<p class="p1"><span class="Apple-converted-space">        </span>const routeCache = {}; // Cache to prevent spamming the routing API</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>setInterval(() =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const now = new Date();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>document.getElementById('clock').innerText = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' });</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}, 1000);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>window.onload = () =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const loadingText = document.getElementById('loadingText');</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (navigator.geolocation) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>navigator.geolocation.getCurrentPosition(</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>(pos) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>userLat = pos.coords.latitude;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>userLon = pos.coords.longitude;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>loadingText.innerText = "GPS LOCK ACQUIRED...";</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>setTimeout(initializeRadar, 800);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>},</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>(err) =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>loadingText.innerText = "GPS DENIED. USING FALLBACK LOC...";</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>setTimeout(initializeRadar, 1500);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>},</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>{ timeout: 8000 }<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>initializeRadar();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>};</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>function initializeRadar() {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>document.getElementById('loading').style.opacity = '0';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>setTimeout(() =&gt; document.getElementById('loading').style.display = 'none', 500);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>map = L.map('map', {zoomControl: false, attributionControl: false, scrollWheelZoom: false, dragging: false}).setView([userLat, userLon], 10);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>L.circleMarker([userLat, userLon], { radius: 6, color: '#00e5ff', fillColor: '#00e5ff', fillOpacity: 1, weight: 2 }).addTo(map);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>L.circle([userLat, userLon], {radius: MAX_DISTANCE_KM * 1000, color: '#00e5ff', weight: 1, fillOpacity: 0.05, dashArray: "5, 10"}).addTo(map);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>fetchAircraft();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>setInterval(fetchAircraft, REFRESH_RATE);</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>setInterval(() =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const hexKeys = Object.keys(aircraftMarkers);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if(hexKeys.length &gt; 0) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>currentCycleIndex = (currentCycleIndex + 1) % hexKeys.length;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const nextHex = hexKeys[currentCycleIndex];</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>selectAircraft(aircraftMarkers[nextHex].data);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}, CYCLE_RATE);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>async function fetchAircraft() {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const rawUrl = `https://api.adsb.lol/v2/lat/${userLat}/lon/${userLon}/dist/${RADIUS_NM}`;</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>const urlsToTry = [</p>
+<p class="p1"><span class="Apple-converted-space">                </span>rawUrl,<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>`https://api.allorigins.win/raw?url=${encodeURIComponent(rawUrl)}`,</p>
+<p class="p1"><span class="Apple-converted-space">                </span>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(rawUrl)}`</p>
+<p class="p1"><span class="Apple-converted-space">            </span>];</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>let success = false;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>let targetCount = 0;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>for (const url of urlsToTry) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>try {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const res = await fetch(url);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (!res.ok) continue;<span class="Apple-converted-space"> </span></p>
+<p class="p2"><span class="Apple-converted-space">                    </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const data = await res.json();</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (data.ac) {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>targetCount = updateMarkers(data.ac);</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>document.getElementById('radarStatus').innerText = `AIRBORNE TARGETS: ${targetCount}`;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>document.getElementById('radarStatus').style.color = '#00e5ff';</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>success = true;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>break;<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>} catch (e) { }</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (!success) {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>document.getElementById('radarStatus').innerText = `NO SIGNAL`;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>document.getElementById('radarStatus').style.color = '#ffaa00';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>async function fetchFlightRoute(callsign) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (!callsign || callsign.trim() === '') return { from: 'N/A', fromCountry: 'CLASSIFIED', to: 'N/A', toCountry: 'CLASSIFIED' };</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const id = callsign.trim();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>if (routeCache[id]) return routeCache[id];</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>try {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const url = `https://api.flightradar24.com/common/v1/flight/list.json?query=${id}&amp;fetchBy=flight&amp;page=1&amp;limit=1`;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const res = await fetch(proxyUrl);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const data = await res.json();</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (data.result &amp;&amp; data.result.response &amp;&amp; data.result.response.data &amp;&amp; data.result.response.data.length &gt; 0) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const flight = data.result.response.data[0];</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const origin = flight.airport.origin;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const dest = flight.airport.destination;</p>
+<p class="p2"><span class="Apple-converted-space">                    </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const route = {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>from: origin ? origin.code.iata : 'UNK',</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>fromCountry: origin ? origin.position.country.name : 'Unknown',</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>to: dest ? dest.code.iata : 'UNK',</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>toCountry: dest ? dest.position.country.name : 'Unknown'</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>};</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>routeCache[id] = route;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>return route;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>} catch(e) { }</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>const fallback = { from: 'UNK', fromCountry: 'UNAVAILABLE', to: 'UNK', toCountry: 'UNAVAILABLE' };</p>
+<p class="p1"><span class="Apple-converted-space">            </span>routeCache[id] = fallback;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>return fallback;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>function renderIconHtml(ac) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const isMil = ac.mil || (ac.dbFlags &amp; 1) || (ac.desc &amp;&amp; ac.desc.toLowerCase().includes('mil'));</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const baseColor = isMil ? '#ff3333' : '#00e5ff';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const track = ac.track || ac.trk || 0;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const isSelected = selectedHex === ac.hex;</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>const color = isSelected ? '#ffffff' : baseColor;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const size = isSelected ? 48 : 36;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const dropShadow = isSelected ? `drop-shadow(0px 0px 10px rgba(255,255,255,0.8))` : `drop-shadow(0px 0px 6px ${baseColor}80)`;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const ring = isSelected ? `&lt;div class="selection-ring"&gt;&lt;/div&gt;` : '';</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>return `&lt;div style="position: relative; width: ${size}px; height: ${size}px; display: flex; justify-content: center; align-items: center;"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>${ring}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div style="transform: rotate(${track}deg); transform-origin: center; filter: ${dropShadow}; display: flex; transition: all 0.3s;"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;svg viewBox="0 0 24 24" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>&lt;path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="${color}"/&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;/svg&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;`;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>function updateAllIcons() {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>Object.values(aircraftMarkers).forEach(marker =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const ac = marker.data;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const size = selectedHex === ac.hex ? 48 : 36;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>marker.setIcon(L.divIcon({</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>html: renderIconHtml(ac),<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>className: 'plane-icon',<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>iconSize: [size, size],<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>iconAnchor: [size/2, size/2]</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}));</p>
+<p class="p1"><span class="Apple-converted-space">                </span>marker.setZIndexOffset(selectedHex === ac.hex ? 1000 : 0);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>});</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>function updateMarkers(aircrafts) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const currentHexes = new Set();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>let validCount = 0;</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>aircrafts.forEach(ac =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if(!ac.lat || !ac.lon) return;</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>// IGNORE AIRCRAFT ON GROUND (Ground status or less than 100 ft)</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if(ac.alt_baro === 'ground' || ac.alt_baro &lt; 100) return;</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>// 40km Distance Filter</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const distKm = calculateDistance(userLat, userLon, ac.lat, ac.lon);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (distKm &gt; MAX_DISTANCE_KM) return;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>currentHexes.add(ac.hex);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>validCount++;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if(aircraftMarkers[ac.hex]) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>aircraftMarkers[ac.hex].setLatLng([ac.lat, ac.lon]);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>aircraftMarkers[ac.hex].data = ac;</p>
+<p class="p2"><span class="Apple-converted-space">                    </span></p>
+<p class="p1"><span class="Apple-converted-space">                    </span>// IF THIS IS THE ACTIVE PLANE, TRACK IT LIVE</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if(selectedHex === ac.hex) {</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>updatePanelData(ac);</p>
+<p class="p1"><span class="Apple-converted-space">                        </span>map.panTo([ac.lat, ac.lon], {animate: true, duration: 1.5}); // Live smooth camera follow</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">                </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>const marker = L.marker([ac.lat, ac.lon]).addTo(map);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>marker.data = ac;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>aircraftMarkers[ac.hex] = marker;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>// Remove out-of-bounds or landed aircraft</p>
+<p class="p1"><span class="Apple-converted-space">            </span>Object.keys(aircraftMarkers).forEach(hex =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if(!currentHexes.has(hex)) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>map.removeLayer(aircraftMarkers[hex]);</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>delete aircraftMarkers[hex];</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>if (selectedHex === hex) document.getElementById('infoPanel').classList.remove('active');</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>updateAllIcons();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>return validCount;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>async function selectAircraft(ac) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>selectedHex = ac.hex;</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>updateAllIcons();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>map.panTo([ac.lat, ac.lon], {animate: true, duration: 1.5});</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>updatePanelData(ac);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>document.getElementById('infoPanel').classList.add('active');</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>// Reset Routing UI State for lookup</p>
+<p class="p1"><span class="Apple-converted-space">            </span>document.getElementById('acFromCode').innerText = '...';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>document.getElementById('acFromCountry').innerText = 'SEARCHING...';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>document.getElementById('acToCode').innerText = '...';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>document.getElementById('acToCountry').innerText = 'SEARCHING...';</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>fetchFlightRoute(ac.flight).then(route =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>// Ensure we haven't cycled to a new plane while fetching</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (selectedHex === ac.hex) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>document.getElementById('acFromCode').innerText = route.from;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>document.getElementById('acFromCountry').innerText = route.fromCountry;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>document.getElementById('acToCode').innerText = route.to;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>document.getElementById('acToCountry').innerText = route.toCountry;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>});</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>const imgEl = document.getElementById('acImage');</p>
+<p class="p1"><span class="Apple-converted-space">            </span>imgEl.style.opacity = '0.3';</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>try {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>const imgUrl = `https://api.planespotters.net/pub/photos/hex/${ac.hex}`;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>let res = await fetch(imgUrl);</p>
+<p class="p2"><span class="Apple-converted-space">                </span></p>
+<p class="p1"><span class="Apple-converted-space">                </span>if (!res.ok) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(imgUrl)}`);</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">                </span>const data = await res.json();</p>
+<p class="p1"><span class="Apple-converted-space">                </span>if(data.photos &amp;&amp; data.photos.length &gt; 0) {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>imgEl.src = data.photos[0].thumbnail_large.src;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>imgEl.src = "data:image/svg+xml;utf8,&lt;svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'&gt;&lt;rect width='100%' height='100%' fill='%23111'/&gt;&lt;text x='50%' y='50%' fill='%23444' text-anchor='middle' alignment-baseline='middle' font-family='sans-serif' font-size='16'&gt;NO VISUAL ON FILE&lt;/text&gt;&lt;/svg&gt;";</p>
+<p class="p1"><span class="Apple-converted-space">                </span>}</p>
+<p class="p1"><span class="Apple-converted-space">            </span>} catch(e) {</p>
+<p class="p1"><span class="Apple-converted-space">               </span>imgEl.src = "data:image/svg+xml;utf8,&lt;svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'&gt;&lt;rect width='100%' height='100%' fill='%23111'/&gt;&lt;text x='50%' y='50%' fill='%23444' text-anchor='middle' alignment-baseline='middle' font-family='sans-serif' font-size='16'&gt;VISUAL UNAVAILABLE&lt;/text&gt;&lt;/svg&gt;";</p>
+<p class="p1"><span class="Apple-converted-space">            </span>} finally {</p>
+<p class="p1"><span class="Apple-converted-space">                </span>imgEl.style.opacity = '1';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>}</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>function updatePanelData(ac) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const isMil = ac.mil || (ac.dbFlags &amp; 1) || (ac.desc &amp;&amp; ac.desc.toLowerCase().includes('mil'));</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>document.getElementById('acTypeHeader').innerText = ac.desc || ac.t || 'UNCLASSIFIED TYPE';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>document.getElementById('acOperatorHeader').innerText = ac.ownOp || 'UNKNOWN OPERATOR';</p>
+<p class="p1"><span class="Apple-converted-space">            </span>document.getElementById('acMil').style.display = isMil ? 'block' : 'none';</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">            </span>document.getElementById('acAlt').innerText = ac.alt_baro === 'ground' ? 'GND' : (ac.alt_baro || 0).toLocaleString();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>document.getElementById('acSpeed').innerText = (ac.gs || 0).toLocaleString();</p>
+<p class="p1"><span class="Apple-converted-space">            </span>document.getElementById('acSquawk').innerText = ac.squawk || 'NONE';</p>
+<p class="p2"><span class="Apple-converted-space">            </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>const dist = calculateDistance(userLat, userLon, ac.lat, ac.lon).toFixed(1);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>document.getElementById('acDist').innerText = dist;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">        </span>function calculateDistance(lat1, lon1, lat2, lon2) {</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const R = 6371;<span class="Apple-converted-space"> </span></p>
+<p class="p1"><span class="Apple-converted-space">            </span>const dLat = (lat2 - lat1) * Math.PI / 180;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const dLon = (lon2 - lon1) * Math.PI / 180;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>const a = Math.sin(dLat/2) * Math.sin(dLat/2) +</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *</p>
+<p class="p1"><span class="Apple-converted-space">                      </span>Math.sin(dLon/2) * Math.sin(dLon/2);</p>
+<p class="p1"><span class="Apple-converted-space">            </span>return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));</p>
+<p class="p1"><span class="Apple-converted-space">        </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/script&gt;</p>
+<p class="p1">&lt;/body&gt;</p>
+<p class="p1">&lt;/html&gt;</p>
+</body>
+</html>
